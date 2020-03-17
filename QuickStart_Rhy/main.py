@@ -50,25 +50,28 @@ def h():
             color_flag = False
         ss = ss.split(':->')
         return colorama.Fore.LIGHTMAGENTA_EX + ss[0] + colorama.Style.RESET_ALL + \
-            ':->' + colorama.Fore.YELLOW + ss[1] + colorama.Style.RESET_ALL
+               ':->' + colorama.Fore.YELLOW + ss[1] + colorama.Style.RESET_ALL
 
     print('help:')
-    print(color_rep('    qs -u  [url]             :-> open url using default browser'))
-    print(color_rep('    qs -a  [app/(file...)]   :-> open app or open file by app(for Mac OS X)'))
-    print(color_rep('    qs -f  [file...]         :-> open file by default app'))
-    print(color_rep('    qs -dl [urls/""]         :-> download file from url(in clipboard)'))
+    print(color_rep('    qs -u  <url>             :-> open url using default browser'))
+    print(color_rep('    qs -a  <app> [file..]    :-> open app or open file by app(for Mac OS X)'))
+    print(color_rep('    qs -f  <file...>         :-> open file by default app'))
+    print(color_rep('    qs -dl [urls]            :-> download file from url(in clipboard)'))
     print(color_rep('    qs -trans [content]      :-> translate the content(in clipboard)'))
     print(color_rep('    qs -time                 :-> view current time'))
     print(color_rep('    qs -ftp                  :-> start a simple ftp server'))
     print(color_rep('    qs -top                  :-> cpu and memory monitor'))
+    print(color_rep('    qs -rmbg <picture>       :-> remove image background'))
+    print(color_rep('    qs -smms <picture/*.md>  :-> upload img to smms or all in .md'))
+    print(color_rep('    qs -ali_nas -help        :-> get aliyun nas api help menu'))
+    print(color_rep('    qs -qiniu -help          :-> get qiniu nas api help menu'))
     print(color_rep('    qs -weather [address]    :-> check weather (of address)'))
-    print(color_rep('    qs -mktar [path]         :-> create gzipped archive for path'))
-    print(color_rep('    qs -untar [path]         :-> extract path.tar.*'))
-    print(color_rep('    qs -mkzip [path]         :-> make a zip for path'))
-    print(color_rep('    qs -unzip [path]         :-> unzip path.zip'))
+    print(color_rep('    qs -mktar <path>         :-> create gzipped archive for path'))
+    print(color_rep('    qs -untar <path>         :-> extract path.tar.*'))
+    print(color_rep('    qs -mkzip <path>         :-> make a zip for path'))
+    print(color_rep('    qs -unzip <path>         :-> unzip path.zip'))
     print(color_rep('    qs -upload               :-> upload your pypi library'))
     print(color_rep('    qs -upgrade              :-> update qs'))
-    print(color_rep('    qs -pyuninstaller [path] :-> remove files that pyinstaller create'))
 
 
 def check_one_page(url):
@@ -173,16 +176,14 @@ def cur_time():
         'Sunday': '周日'
     }
     import time
-    tm = time.strftime('%Y-%m-%d %A %H:%M:%S', time.localtime(time.time())).split()
-    ls = tm[0].split('-')
-    tm[0] = ls[0] + '年' + ls[1] + '月' + ls[2] + '日'
+    tm = time.strftime('%Y年%m月%d日 %A %H:%M:%S', time.localtime(time.time())).split()
     tm[1] = week[tm[1]]
     print(' '.join(tm))
 
 
 def m3u8_dl(url):
     from QuickStart_Rhy.m3u8_dl import M3U8DL
-    M3U8DL(url, url.split('.')[-2].split('/')[-1], 16).download()
+    M3U8DL(url, url.split('.')[-2].split('/')[-1]).download()
 
 
 def download():
@@ -209,7 +210,10 @@ def weather():
             self.ret = []
 
         def run(self):
-            ct = requests.get(self.url, headers)
+            try:
+                ct = requests.get(self.url, headers)
+            except:
+                return
             ct.encoding = 'utf-8'
             ct = ct.text.split('\n')
             if dir_char == '/':
@@ -233,18 +237,32 @@ def weather():
         i.join()
     simple = tls[0].get_ret()
     table = tls[1].get_ret()
-    if not loc:
-        print('地区：' + simple[0].split('：')[-1])
-    simple = simple[2:7]
-    print('\n'.join(simple))
-    print(table[3][:-1])
-    bottom_line = 7
-    while '╂' not in table[bottom_line]:
-        bottom_line += 1
-    for i in table[7:bottom_line + 2]:
-        print(i[:-1])
-    print('└────────────────────────────────────────────────────────────────────────')
-    print('\n'.join(table[-3 if not loc else -4:]))
+    if simple:
+        if not loc:
+            from QuickStart_Rhy.Dict import Dict
+            translator = Dict()
+            try:
+                print('地区：' + translator.dictionary(simple[0].split('：')[-1])['trans_result']['data'][0]['dst'])
+            except:
+                print('地区：' + simple[0].split('：')[-1])
+        simple = simple[2:7]
+        print('\n'.join(simple))
+    else:
+        print('Error: Get data failed.')
+    if table:
+        print(table[3][:-1])
+        bottom_line = 7
+        try:
+            while '╂' not in table[bottom_line]:
+                bottom_line += 1
+        except IndexError:
+            exit('Get Weather Data failed!')
+        for i in table[7:bottom_line + 2]:
+            print(i[:-1])
+        print('└────────────────────────────────────────────────────────────────────────')
+        print('\n'.join(table[-3 if not loc else -4:]))
+    else:
+        print('Error: Get detail failed.')
 
 
 def ftp():
@@ -262,44 +280,47 @@ def ftp():
 
 
 def top():
+    import colorama
     import psutil
-    import matplotlib.pyplot as plt
-    import numpy as np
+    import time
+    import math
+    from prettytable import PrettyTable
+    from colorama import Style, ansi, Cursor
+    from QuickStart_Rhy import ChartBar
+    from QuickStart_Rhy.normal_dl import size_format
 
-    def close(event):
-        if event.key in 'qQ':
-            exit(0)
+    def deal():
+        print(ansi.clear_screen() + Cursor.POS(0, 0) + Style.RESET_ALL, end='')
+        exit(0)
 
-    signal.signal(signal.SIGINT, deal_ctrl_c)
-    cpu_x = np.arange(1, psutil.cpu_count() + 1)
-    len_x = len(cpu_x)
-    mem_x = np.arange(1, 11)
-    mem_y = np.array([0] * 10)
-    mem_p = 9
-    mem_lim = psutil.virtual_memory().total / 1024 ** 3
-    fig = plt.figure(figsize=(6, 4))
-    fig.canvas.mpl_connect('key_press_event', close)
-    while True:
-        plt.clf()
-        cpu_per = psutil.cpu_percent(percpu=True)
-        mem_cur = psutil.virtual_memory().used / 1024 ** 3
-        cpu_graph = plt.subplot(2, 1, 1)
-        cpu_graph.set_title('cpu: %.2f%%' % (sum(cpu_per) / len_x))
-        cpu_graph.set_ylabel('percent')
-        cpu_graph.set_ylim((0, 100))
-        cpu_graph.set_xticks([])
-        plt.bar(cpu_x, cpu_per)
-        plt.grid(axis="y", linestyle='-.')
-        plt.tight_layout()
-        mem_graph = plt.subplot(2, 1, 2)
-        mem_graph.set_title('memory: %.2fG' % mem_cur)
-        mem_graph.set_ylabel('G')
-        mem_graph.set_ylim((0, mem_lim))
-        mem_graph.set_xticks([])
-        mem_y[mem_p] = mem_cur
-        mem_p = mem_p - 1 if mem_p else 9
-        plt.plot(mem_x, mem_y)
-        plt.pause(1)
+    colorama.init()
+    _kernal = psutil.cpu_count()
+    _total_mem = psutil.virtual_memory().total
+    _cpu_dt = [0] * 40
+    _mem_dt = [0] * 40
+    _cpu_chart = ChartBar.RollBar(_cpu_dt, height=10)
+    _mem_chart = ChartBar.RollBar(_mem_dt, height=10)
+    charts = [_cpu_chart, _mem_chart]
+    window = PrettyTable()
+    window.add_row(charts)
+    print(ansi.clear_screen())
+    try:
+        while True:
+            _cpu_cur = sum(psutil.cpu_percent(percpu=True)) / _kernal
+            _mem_cur = psutil.virtual_memory().used
+            _cpu_chart.add(math.ceil(_cpu_cur))
+            _mem_chart.add(math.ceil(_mem_cur / _total_mem * 100))
+            window.field_names = ['CPU: %.2f%%' % _cpu_cur, 'MEM: %s' % size_format(_mem_cur)]
+            print((ansi.clear_screen() if dir_char == '\\' else '') + Cursor.POS(0, 0))
+            print(' ' * 39, end='')
+            cur_time()
+            cur_img = str(window).split('\n')
+            for i in cur_img:
+                print(' ' * 4, end='')
+                print(i)
+            time.sleep(1)
+    except:
+        deal()
 
 
 def mktar():
@@ -325,6 +346,8 @@ def untar():
                     os.system('tar -xzf %s' % self.path)
                 elif self.path.endswith('.bz2'):
                     os.system('tar -xjf %s' % self.path)
+                else:
+                    os.system('tar -xf %s' % self.path)
             else:
                 print("No such file or dictionary:%s" % self.path)
 
@@ -373,12 +396,87 @@ def upload_pypi():
     os.system('twine upload dist%s*' % dir_char)
 
 
-def rm_pyinstaller():
-    file_name = sys.argv[2]
-    remove('build')
-    remove('__pycache__')
-    remove('%s.spec' % file_name)
-    remove('dist')
+def remove_bg():
+    try:
+        path = sys.argv[2]
+    except IndexError:
+        exit('Usage: %s -rmbg picture' % sys.argv[0])
+    else:
+        from QuickStart_Rhy.call_api import rmbg
+        rmbg(path)
+
+
+def ImgBed():
+    try:
+        path = sys.argv[2]
+    except IndexError:
+        exit('Usage: %s -smms [picture]' % sys.argv[0])
+    else:
+        from QuickStart_Rhy.call_api import smms
+        smms(path)
+
+
+def ali_nas():
+    try:
+        op = sys.argv[2]
+        if op not in ['-dl', '-up', '-ls']:
+            raise IndexError
+        file = sys.argv[3] if op != '-ls' else None
+        try:
+            bucket = sys.argv[4]
+        except IndexError:
+            bucket = None
+    except IndexError:
+        print('qs -ali_nas:\n'
+              '\t-up <file> [bucket]: upload file to bucket\n'
+              '\t-dl <file> [bucket]: download file from bucket\n'
+              '\t-rm <file> [bucket]: remove file in bucket\n'
+              '\t-ls [bucket]       : get file info of bucket')
+        exit(0)
+    else:
+        from QuickStart_Rhy.call_api import Aliyun_nas_api
+        ali_api = Aliyun_nas_api()
+        if op == '-up':
+            ali_api.upload(file, bucket)
+        elif op == '-dl':
+            ali_api.download(file, bucket)
+        elif op == '-ls':
+            ali_api.list_bucket(bucket)
+        elif op == '-dl':
+            ali_api.remove(file, bucket)
+
+
+def qiniu():
+    try:
+        op = sys.argv[2]
+        if op not in ['-up', '-rm', '-cp', '-ls', '-dl']:
+            raise IndexError
+        file = sys.argv[3] if op != '-ls' else None
+        try:
+            bucket = sys.argv[4] if op != '-ls' else sys.argv[3]
+        except IndexError:
+            bucket = None
+    except IndexError:
+        print('qs -qiniu:\n'
+              '\t-up <file> [bucket]: upload file to bucket\n'
+              '\t-rm <file> [bucket]: remove file in bucket\n'
+              '\t-cp <url > [bucket]: copy file from url\n'
+              '\t-dl <file> [bucket]: download file from bucket\n'
+              '\t-ls [bucket]       : get file info of bucket')
+        exit(0)
+    else:
+        from QuickStart_Rhy.call_api import Qiniu_nas_api
+        qiniu_api = Qiniu_nas_api()
+        if op == '-up':
+            qiniu_api.upload(file, bucket)
+        elif op == '-rm':
+            qiniu_api.remove(file, bucket)
+        elif op == '-cp':
+            qiniu_api.copy_url(file, bucket)
+        elif op == '-dl':
+            qiniu_api.download(file, bucket)
+        elif op == '-ls':
+            qiniu_api.list_bucket(bucket)
 
 
 cmd_config = {
@@ -391,6 +489,10 @@ cmd_config = {
     '-ftp': ftp,
     '-top': top,
     '-time': cur_time,
+    '-rmbg': remove_bg,
+    '-smms': ImgBed,
+    '-ali_nas': ali_nas,
+    '-qiniu': qiniu,
     '-weather': weather,
     '-dl': download,
     '-mktar': mktar,
@@ -398,8 +500,7 @@ cmd_config = {
     '-mkzip': mkzip,
     '-unzip': unzip,
     '-upgrade': upgrade,
-    '-upload': upload_pypi,
-    '-pyuninstaller': rm_pyinstaller
+    '-upload': upload_pypi
 }
 
 
