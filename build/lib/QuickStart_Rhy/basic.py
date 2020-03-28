@@ -1,8 +1,6 @@
 import os
 import sys
 
-
-name = 'QuickStart_Rhy'
 headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) '
                   'Version/11.0.2 Safari/604.4.7'}
@@ -45,7 +43,7 @@ def cur_time():
 
 def u():
     import webbrowser as wb
-    from QuickStart_Rhy.NetTools import formatUrl
+    from QuickStart_Rhy.NetTools.basic import formatUrl
     for url in sys.argv[2:]:
         url = formatUrl(url)
         wb.open_new_tab(url)

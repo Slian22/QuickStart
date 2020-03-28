@@ -1,15 +1,9 @@
 import urllib3
 from concurrent.futures import ThreadPoolExecutor, wait
-import shutil
 import requests
 import os
-import sys
+from QuickStart_Rhy import dir_char, remove, headers
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-dir_char = '\\' if sys.platform.startswith('win') else '/'
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/604.4.7 (KHTML, like Gecko) '
-                  'Version/11.0.2 Safari/604.4.7'}
 
 
 def merge_file(path, ts_ls, name):
@@ -76,4 +70,4 @@ class M3U8DL:
         wait(work)
         print("Download completed!")
         merge_file(download_path, tmp, self.name)
-        shutil.rmtree(download_path)
+        remove(download_path)
