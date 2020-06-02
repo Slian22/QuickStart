@@ -32,7 +32,7 @@ def ali_oss():
         except IndexError:
             bucket = None
     except IndexError:
-        print('qs -ali_nas:\n'
+        print('qs -alioss:\n'
               '\t-up <file> [bucket]: upload file to bucket\n'
               '\t-dl <file> [bucket]: download file from bucket\n'
               '\t-rm <file> [bucket]: remove file in bucket\n'
@@ -76,18 +76,45 @@ def qiniu():
             func_table[op](file, bucket)
 
 
+def txcos():
+    try:
+        op = sys.argv[2]
+        if op not in ['-dl', '-up', '-ls', '-rm']:
+            raise IndexError
+        file = sys.argv[3] if op != '-ls' else None
+        try:
+            bucket = sys.argv[4] if op != '-ls' else sys.argv[3]
+        except IndexError:
+            bucket = None
+    except IndexError:
+        print('qs -txcos:\n'
+              '\t-up <file> [bucket]: upload file to bucket\n'
+              '\t-dl <file> [bucket]: download file from bucket\n'
+              '\t-rm <file> [bucket]: remove file in bucket\n'
+              '\t-ls [bucket]       : get file info of bucket')
+        exit(0)
+    else:
+        from QuickStart_Rhy.API.txcos import txcos
+        tx_api = txcos()
+        func_table = tx_api.get_func_table()
+        if not file:
+            func_table[op](bucket)
+        else:
+            func_table[op](file, bucket)
+
+
 def translate():
     import pyperclip
-    from QuickStart_Rhy.API.Dict import Dict
+    from QuickStart_Rhy.API.TencentTranslate import Translate
 
     content = ' '.join(sys.argv[2:])
     if not content:
         content = pyperclip.paste()
     if content:
         content.replace('\n', ' ')
-        translator = Dict()
-        ret = translator.dictionary(content)
-        print(ret['trans_result']['data'][0]['dst'])
+        translator = Translate()
+        ret = translator.translate(content)
+        print(ret if ret else 'Translate Failed!')
     else:
         print("No content in your clipboard or command parameters!")
 
@@ -127,11 +154,13 @@ def weather():
     table = tls[1].get_res()
     if simple:
         if not loc:
-            from QuickStart_Rhy.API.Dict import Dict
-            translator = Dict()
-            try:
-                print('地区：' + translator.dictionary(simple[0].split('：')[-1])['trans_result']['data'][0]['dst'])
-            except:
+            from QuickStart_Rhy.API import pre_check
+            if pre_check("txyun_scid", False) and pre_check("txyun_sckey", False):
+                from QuickStart_Rhy.API.TencentTranslate import Translate
+                translator = Translate()
+                trans_loaction = translator.translate(simple[0].split('：')[-1])
+                print('地区：' + trans_loaction if trans_loaction else simple[0].split('：')[-1])
+            else:
                 print('地区：' + simple[0].split('：')[-1])
         simple = simple[2:7]
         print('\n'.join(simple))
@@ -151,3 +180,61 @@ def weather():
         print('\n'.join(table[-3 if not loc else -4:]))
     else:
         print('Error: Get detail failed.')
+
+
+def ipinfo(ip: str = None):
+    from QuickStart_Rhy.API.IPinfo import get_ip_info
+    return get_ip_info(ip)
+
+
+def largeImage():
+    try:
+        path = sys.argv[2]
+    except IndexError:
+        exit('Usage qs -LG img')
+    else:
+        from QuickStart_Rhy.API import AipImage
+        aip_cli = AipImage.ImageDeal()
+        aip_cli.largeImage(path)
+
+
+def AipNLP():
+    from QuickStart_Rhy.API.AipNLP import AipNLP
+    import pyperclip
+    ct = sys.argv[2:]
+    if not ct:
+        ct = [pyperclip.paste()]
+    NLP = AipNLP()
+    for id, line in enumerate(ct):
+        ct[id] = NLP.get_res(line)
+        if id == 9:
+            print('...')
+        elif id < 9:
+            print(ct[id])
+    pyperclip.copy('\n'.join(ct))
+
+
+def Seafile_Communicate():
+    from QuickStart_Rhy.API.Seafile import Seafile
+    try:
+        method = sys.argv[2]
+        if method == 'get':
+            Seafile().get_msg()
+        elif method == 'post':
+            msg = ' '.join(sys.argv[3:]) if len(sys.argv) > 3 else None
+            Seafile().post_msg(msg) if msg else Seafile().post_msg()
+    except IndexError:
+        print("Usage:\n  1. qs -sea get\n  2. qs -sea post [msg]")
+        exit(0)
+
+
+def Pasteme():
+    from QuickStart_Rhy.API.simple_api import pasteme
+    try:
+        method = sys.argv[2]
+        key = sys.argv[3]
+        password = sys.argv[4] if len(sys.argv) > 4 else ''
+        pasteme(key, password, method)
+    except IndexError:
+        print("Usage:\n  1. qs -pasteme get key [password]\n  2. qs -pasteme post lang [password]")
+        exit(0)

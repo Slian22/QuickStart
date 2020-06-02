@@ -1,7 +1,4 @@
 import sys
-import signal
-from QuickStart_Rhy.NetTools import get_ip
-from QuickStart_Rhy import deal_ctrl_c
 
 
 def upgrade():
@@ -14,8 +11,8 @@ def upload_pypi():
     import os
     from QuickStart_Rhy import remove, dir_char
     remove('dist')
-    if os.system('python3 setup.py sdist bdist_wheel'):
-        os.system('python setup.py sdist bdist_wheel')
+    if os.system('python3 setup.py sdist'):
+        os.system('python setup.py sdist')
     os.system('twine upload dist%s*' % dir_char)
 
 
@@ -40,15 +37,24 @@ def download():
         print("No url found!")
 
 
-def ftp():
-    ip = get_ip()
+def http():
+    url = ''
+    if len(sys.argv) > 2:
+        ip, port = sys.argv[2].split(':')
+        port = int(port)
+        if '-bind' in sys.argv:
+            try:
+                url = sys.argv[sys.argv.index('-bind') + 1]
+                from QuickStart_Rhy.NetTools import formatUrl
+                url = formatUrl(url)
+            except IndexError:
+                print('Usage: qs -ftp ip:port -bind url')
+                exit(0)
+    else:
+        from QuickStart_Rhy.NetTools import get_ip
+        ip = get_ip()
+        port = 8000
     if not ip:
         exit('get ip failed!')
-    print('starting ftp simple server: address http://%s:8000/' % ip)
-    import http.server
-    Handler = http.server.SimpleHTTPRequestHandler
-    import socketserver
-    host = (ip, 8000)
-    with socketserver.TCPServer(host, Handler) as httpd:
-        signal.signal(signal.SIGINT, deal_ctrl_c)
-        httpd.serve_forever()
+    from QuickStart_Rhy.NetTools.server import HttpServers
+    HttpServers(ip, port, url).start()
